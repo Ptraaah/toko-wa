@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toko Berkah - Katalog Online</title>
+<!--
+  ============================================================================
+  TOKO-WA - template toko online satu file, pesanan masuk ke WhatsApp.
+  Gratis (MIT) oleh ptraaa - github.com/Ptraaah/toko-wa
+
+  CARA PAKAI:
+  1. Ganti isi CONFIG di bagian bawah file ini: nama toko, nomor WhatsApp,
+     daftar produk (nama, harga, foto, kategori).
+  2. Upload file ini ke hosting statis gratis (GitHub Pages, Netlify,
+     Cloudflare Pages) atau kirim sebagai satu file.
+  3. Bagikan tautannya. Pembeli memilih produk, checkout, dan pesanan
+     terkirim rapi ke WhatsApp Anda. Tanpa server, tanpa database, tanpa biaya.
+  ============================================================================
+-->
+<style>
+  :root{--brand:#128c7e;--brand-dark:#0b6e63;--ink:#22252a;--paper:#f6f7f5;--card:#fff}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:system-ui,'Segoe UI',Arial,sans-serif;background:var(--paper);color:var(--ink)}
+  header{background:var(--brand);color:#fff;padding:18px 16px 14px;position:sticky;top:0;z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+  header h1{font-size:22px;cursor:pointer;display:inline-block}
+  header p{font-size:13px;opacity:.85;margin-top:2px}
+  .wrap{max-width:880px;margin:0 auto;padding:14px}
+  .tools{display:flex;gap:8px;margin:12px 0}
+  .tools input{flex:1;padding:11px 13px;border:1px solid #d8dcd6;border-radius:999px;font-size:15px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{border:1px solid var(--brand);color:var(--brand-dark);background:#fff;border-radius:999px;padding:6px 14px;font-size:14px;cursor:pointer}
+  .chip.on{background:var(--brand);color:#fff}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .item{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);display:flex;flex-direction:column}
+  .item img{width:100%;height:140px;object-fit:cover}
+  .item .b{padding:10px 12px;display:flex;flex-direction:column;gap:4px;flex:1}
+  .item h3{font-size:15px;line-height:1.3}
+  .item .d{font-size:12.5px;color:#666;flex:1}
+  .price{font-weight:700;color:var(--brand-dark)}
+  .add{margin-top:6px;background:var(--brand);color:#fff;border:none;border-radius:9px;padding:9px;font-size:14px;cursor:pointer}
+  .add:active{background:var(--brand-dark)}
+  #cartbar{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;width:min(880px,94%);background:#fff;border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.22);padding:12px 14px;display:none;z-index:6}
+  #cartbar .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  #cartitems{font-size:13.5px;max-height:120px;overflow:auto;margin:8px 0;color:#444}
+  #cartitems div{display:flex;justify-content:space-between;padding:2px 0}
+  .qty button{width:24px;height:24px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer}
+  .checkout{background:#22c15e;color:#fff;border:none;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer}
+  footer{text-align:center;font-size:12px;color:#999;padding:22px 10px 110px}
+  .empty{text-align:center;color:#888;padding:38px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="storeName">Toko Berkah</h1>
+  <p id="storeTag">Sembako dan kebutuhan harian - pesan lewat WhatsApp, antar hari yang sama</p>
+</header>
+
+<div class="wrap">
+  <div class="tools">
+    <input id="search" type="search" placeholder="Cari produk...">
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">Produk tidak ditemukan. Coba kata kunci lain.</div>
+  <footer>Template toko online gratis oleh ptraaa - github.com/Ptraaah/toko-wa (MIT, boleh diubah dan dipakai jualan)</footer>
+</div>
+
+<div id="cartbar">
+  <div class="row"><b>Keranjang</b><b id="carttotal">Rp0</b></div>
+  <div id="cartitems"></div>
+  <div class="row">
+    <span style="font-size:13px;color:#777">Checkout mengirim pesanan ke WhatsApp toko</span>
+    <button class="checkout" onclick="checkout()">Pesan via WhatsApp</button>
+  </div>
+</div>
+
+<script>
+  /* ===================== CONFIG - GANTI BAGIAN INI ===================== */
+  const CONFIG = {
+    storeName: "Toko Berkah",
+    tagline: "Sembako dan kebutuhan harian - pesan lewat WhatsApp, antar hari yang sama",
+    whatsapp: "6281234567890",            // nomor toko, format 62xxxxxxxxxx
+    greeting: "Halo Toko Berkah, saya mau pesan:",
+    products: [
+      {name: "Beras Premium 5 kg",   price: 68500,  cat: "Sembako", img: "https://picsum.photos/seed/beras/500/400",  desc: "Beras pulen kualitas premium, kemasan 5 kg."},
+      {name: "Minyak Goreng 2 L",    price: 38500,  cat: "Sembako", img: "https://picsum.photos/seed/minyak/500/400", desc: "Minyak goreng jernih, kemasan pouch 2 liter."},
+      {name: "Gula Pasir 1 kg",      price: 17500,  cat: "Sembako", img: "https://picsum.photos/seed/gula/500/400",   desc: "Gula pasir putih bersih, kemasan 1 kg."},
+      {name: "Telur Ayam 1 kg",      price: 27000,  cat: "Segar",   img: "https://picsum.photos/seed/telur/500/400",  desc: "Telur ayam negeri segar, isi kurang lebih 16 butir."},
+      {name: "Kopi Bubuk 200 g",     price: 24000,  cat: "Minuman", img: "https://picsum.photos/seed/kopi/500/400",   desc: "Kopi robusta sangrai, bubuk halus 200 gram."},
+      {name: "Teh Celup Isi 25",     price: 9800,   cat: "Minuman", img: "https://picsum.photos/seed/teh/500/400",    desc: "Teh melati celup, satu kotak isi 25 kantong."},
+      {name: "Sabun Cuci Piring",    price: 12500,  cat: "Rumah",   img: "https://picsum.photos/seed/sabun/500/400",  desc: "Sabun cuci piring lemon 800 ml, ampuh lawan lemak."},
+      {name: "Deterjen Bubuk 900 g", price: 21000,  cat: "Rumah",   img: "https://picsum.photos/seed/deterjen/500/400", desc: "Deterjen bubuk wangi tahan lama, kemasan 900 gram."}
+    ]
+  };
+  /* ==================================================================== */
+
+  const rupiah = n => "Rp" + n.toLocaleString("id-ID");
+  const cart = new Map(); // product index -> qty
+  let activeCat = "Semua";
+
+  const $ = id => document.getElementById(id);
+  $("storeName").textContent = CONFIG.storeName;
+  $("storeTag").textContent = CONFIG.tagline;
+  document.title = CONFIG.storeName + " - Katalog Online";
+
+  const cats = ["Semua", ...new Set(CONFIG.products.map(p => p.cat))];
+  $("chips").innerHTML = cats.map(c =>
+    `<button class="chip${c === "Semua" ? " on" : ""}" onclick="setCat('${c}')">${c}</button>`).join("");
+
+  function setCat(c) {
+    activeCat = c;
+    document.querySelectorAll(".chip").forEach(el => el.classList.toggle("on", el.textContent === c));
+    render();
+  }
+
+  function render() {
+    const q = $("search").value.trim().toLowerCase();
+    const shown = CONFIG.products
+      .map((p, i) => ({...p, i}))
+      .filter(p => (activeCat === "Semua" || p.cat === activeCat) &&
+                   (!q || (p.name + " " + p.desc).toLowerCase().includes(q)));
+    $("empty").style.display = shown.length ? "none" : "block";
+    $("grid").innerHTML = shown.map(p => `
+      <div class="item">
+        <img src="${p.img}" alt="${p.name}" loading="lazy">
+        <div class="b">
+          <h3>${p.name}</h3>
+          <div class="d">${p.desc}</div>
+          <div class="price">${rupiah(p.price)}</div>
+          <button class="add" onclick="addItem(${p.i})">+ Keranjang</button>
+        </div>
+      </div>`).join("");
+    renderCart();
+  }
+
+  function addItem(i) { cart.set(i, (cart.get(i) || 0) + 1); renderCart(); }
+  function setQty(i, q) { if (q <= 0) cart.delete(i); else cart.set(i, q); renderCart(); }
+
+  function cartTotal() {
+    let t = 0;
+    cart.forEach((q, i) => t += CONFIG.products[i].price * q);
+    return t;
+  }
+
+  function renderCart() {
+    const bar = $("cartbar");
+    if (cart.size === 0) { bar.style.display = "none"; return; }
+    bar.style.display = "block";
+    $("cartitems").innerHTML = [...cart.entries()].map(([i, q]) => {
+      const p = CONFIG.products[i];
+      return `<div><span>${p.name} <span class="qty">
+        <button onclick="setQty(${i},${q - 1})">-</button> ${q} <button onclick="setQty(${i},${q + 1})">+</button></span></span>
+        <span>${rupiah(p.price * q)}</span></div>`;
+    }).join("");
+    $("carttotal").textContent = rupiah(cartTotal());
+  }
+
+  function checkout() {
+    const lines = [CONFIG.greeting, ""];
+    cart.forEach((q, i) => {
+      const p = CONFIG.products[i];
+      lines.push(`- ${p.name} x${q} = ${rupiah(p.price * q)}`);
+    });
+    lines.push("", "Total: " + rupiah(cartTotal()), "", "Nama:", "Alamat kirim:");
+    location.href = "https://wa.me/" + CONFIG.whatsapp + "?text=" + encodeURIComponent(lines.join("\n"));
+  }
+
+  $("search").addEventListener("input", render);
+  render();
+
+  /* A small easter egg, from ptraaa with love. */
+  console.log("%c toko-wa %c template toko gratis oleh ptraaa - github.com/Ptraaah ",
+    "background:#128c7e;color:#fff;border-radius:3px", "color:#128c7e");
+  let logoClicks = 0;
+  $("storeName").addEventListener("click", () => {
+    logoClicks++;
+    if (logoClicks === 3) {
+      logoClicks = 0;
+      const t = document.createElement("div");
+      t.textContent = "Ketemu juga. Template ini dibuat oleh ptraaa - selamat jualan, semoga laris.";
+      t.style.cssText = "position:fixed;left:50%;bottom:120px;transform:translateX(-50%);background:#22252a;color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;z-index:20;box-shadow:0 4px 18px rgba(0,0,0,.3)";
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 4200);
+    }
+  });
+</script>
+</body>
+</html>
